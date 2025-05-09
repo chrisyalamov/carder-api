@@ -1,0 +1,25 @@
+{
+  "imports": {
+    "@brc-dd/iron": "jsr:@brc-dd/iron@^1.2.1",
+    "@hono/zod-validator": "npm:@hono/zod-validator@^0.4.3",
+    "@std/ulid": "jsr:@std/ulid@^1.0.0",
+    "@types/pg": "npm:@types/pg@^8.11.11",
+    "drizzle-kit": "npm:drizzle-kit@^0.30.6",
+    "drizzle-orm": "npm:drizzle-orm@^0.41.0",
+    "hono": "jsr:@hono/hono@^4.7.5",
+    "hono-openapi": "npm:hono-openapi@^0.4.6",
+    "pg": "npm:pg@^8.14.1",
+    "zod": "npm:zod@^3.24.2",
+    "zod-openapi": "npm:zod-openapi@^4.2.4"
+  },
+  "tasks": {
+    "start": "deno run --env -A --env-file=.env main.ts",
+    "pull": "deno run --env -A --node-modules-dir npm:drizzle-kit pull --config ./db/drizzle.config.ts",
+    "generate": "DRIZZLE_KIT=true deno run --env -A --node-modules-dir npm:drizzle-kit generate --config ./db/drizzle.config.ts",
+    "migrate": "deno --env -A ./db/neon-migrate.ts"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "hono/jsx"
+  }
+}
