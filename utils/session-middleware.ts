@@ -2,7 +2,8 @@ import { createMiddleware } from "npm:hono/factory"
 import { Env } from "../main.ts"
 import { z } from "zod"
 import { getCookie, setCookie } from "npm:hono/cookie"
-import { clear } from "node:console";
+import { sessions } from "../db/schema/sessions.ts";
+import { eq } from "drizzle-orm/expressions";
 
 const cartValidator = z.object({
   cartLineItems: z.array(
@@ -47,29 +48,39 @@ export const blankSession: Session = {
   },
 }
 
-const sessionStore = new Map<string, Session>()
-
 export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
   // Blank session object
   let session: Session = JSON.parse(JSON.stringify(blankSession))
+  const { database: db } = c.var
 
   // Retrieve the session cookie from the request
   let sessionId = getCookie(c, "session")
 
   // Fill in the session object with the contents of the cookie
+  const sessionObject = await db.select().from(sessions).where(eq(sessions.sessionId, sessionId || ""))
 
-  if (sessionId && sessionStore.has(sessionId)) {
-    session = sessionStore.get(sessionId) as any
+  const sessionFound = sessionObject.length > 0
+
+  if (sessionId && sessionFound) {
+    if (sessionObject[0].data instanceof String) {
+      // If the session data is a string, parse it
+      session = JSON.parse(sessionObject[0].data as string) as any
+    } else {
+      // If the session data is an object, use it directly
+      session = sessionObject[0].data as any
+    }
   } else {
     // If no session cookie is present, or session ID not found,
     // we create a new session object
 
-    // Generate a new session ID
-    const newSessionId = crypto.randomUUID()
-
     // Store the session object in the session store
-    sessionStore.set(newSessionId, session)
-    sessionId = newSessionId
+    const insertedSession = await db.insert(sessions).values({
+      data: JSON.stringify(session),
+    }).returning({
+      sessionId: sessions.sessionId,
+    })
+
+    sessionId = insertedSession[0].sessionId
 
     setCookie(c, "session", sessionId, {
       httpOnly: true,
@@ -102,7 +113,7 @@ export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
     })
 
     // Clear the session store
-    sessionStore.delete(sessionId)
+    await db.delete(sessions).where(eq(sessions.sessionId, sessionId))
 
     return
   }
@@ -118,7 +129,9 @@ export const sessionMiddleware = createMiddleware<Env>(async (c, next) => {
   })
 
   // Store new session object in the session store
-  sessionStore.set(sessionId, session)
+  await db.update(sessions).set({
+    data: JSON.stringify(session),
+  }).where(eq(sessions.sessionId, sessionId))
 
   return
 })

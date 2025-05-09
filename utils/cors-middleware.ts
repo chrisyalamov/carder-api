@@ -4,13 +4,13 @@ import { createMiddleware } from "npm:hono/factory";
 import { env } from "npm:hono/adapter";
 
 export const corsMiddleware = createMiddleware<Env>((c, next) => {
-    const { FRONTEND_URL } = env(c);
+    const { FRONTEND_HOST } = env(c);
 
     return cors({
         origin: [
             "http://localhost:3000",
             "https://dev-3000.chrisyalamov.space",
-            FRONTEND_URL as string,
+            FRONTEND_HOST as string,
         ],
         credentials: true,
     })(c, next);
